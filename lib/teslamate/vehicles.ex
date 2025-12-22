@@ -7,6 +7,7 @@ defmodule TeslaMate.Vehicles do
   alias TeslaMate.Settings.CarSettings
   alias TeslaMate.Log.Car
   alias TeslaMate.Log
+  alias TeslaMate.Auth
 
   @name __MODULE__
 
@@ -111,7 +112,7 @@ defmodule TeslaMate.Vehicles do
     unless is_nil(name = vehicle.display_name), do: Logger.info("Starting logger for '#{name}'")
 
     # Get default user if user_id not provided
-    user_id = user_id || TeslaMate.Auth.get_or_create_default_user().id
+    user_id = user_id || Auth.get_or_create_default_user().id
 
     {:ok, car} =
       with nil <- Log.get_car_by(vin: vehicle.vin),
