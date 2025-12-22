@@ -107,8 +107,11 @@ defmodule TeslaMate.Vehicles do
     vehicles
   end
 
-  def create_or_update!(%TeslaApi.Vehicle{} = vehicle) do
+  def create_or_update!(%TeslaApi.Vehicle{} = vehicle, user_id \\ nil) do
     unless is_nil(name = vehicle.display_name), do: Logger.info("Starting logger for '#{name}'")
+
+    # Get default user if user_id not provided
+    user_id = user_id || TeslaMate.Auth.get_or_create_default_user().id
 
     {:ok, car} =
       with nil <- Log.get_car_by(vin: vehicle.vin),
@@ -133,7 +136,8 @@ defmodule TeslaMate.Vehicles do
         name: vehicle.display_name,
         eid: vehicle.id,
         vid: vehicle.vehicle_id,
-        vin: vehicle.vin
+        vin: vehicle.vin,
+        user_id: user_id
       })
       |> Log.create_or_update_car()
 

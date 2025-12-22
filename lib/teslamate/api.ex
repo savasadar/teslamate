@@ -108,14 +108,14 @@ defmodule TeslaMate.Api do
     state = %State{name: name, deps: deps}
 
     state =
-      case call(deps.auth, :get_tokens) do
+      case get_user_tokens(deps.auth) do
         %Tokens{access: at, refresh: rt} when is_binary(at) and is_binary(rt) ->
           restored_tokens = %Auth{token: at, refresh_token: rt, expires_in: 10 * 60}
 
           {:ok, state} =
             case refresh_tokens(restored_tokens) do
               {:ok, refreshed_tokens} ->
-                :ok = call(deps.auth, :save, [refreshed_tokens])
+                :ok = save_user_tokens(deps.auth, refreshed_tokens)
                 true = insert_auth(name, refreshed_tokens)
                 schedule_refresh(refreshed_tokens, state)
 
@@ -147,7 +147,7 @@ defmodule TeslaMate.Api do
     |> case do
       {:ok, %Auth{} = auth} ->
         true = insert_auth(state.name, auth)
-        :ok = call(state.deps.auth, :save, [auth])
+        :ok = save_user_tokens(state.deps.auth, auth)
         :ok = call(state.deps.vehicles, :restart)
         {:ok, state} = schedule_refresh(auth, state)
         :ok = :fuse.reset(fuse_name(state.name))
@@ -182,7 +182,7 @@ defmodule TeslaMate.Api do
         case Auth.refresh(tokens) do
           {:ok, refreshed_tokens} ->
             true = insert_auth(name, refreshed_tokens)
-            :ok = call(state.deps.auth, :save, [refreshed_tokens])
+            :ok = save_user_tokens(state.deps.auth, refreshed_tokens)
             {:ok, state} = schedule_refresh(refreshed_tokens, state)
             :ok = :fuse.reset(fuse_name(name))
             {:noreply, state}
@@ -311,6 +311,23 @@ defmodule TeslaMate.Api do
   end
 
   defp preload_vehicle(%TeslaApi.Vehicle{} = vehicle, _state), do: vehicle
+
+  # Helper functions for handling both old-style (module) and new-style ({module, user_id}) auth dependencies
+  defp get_user_tokens(auth_dep) when is_atom(auth_dep) do
+    call(auth_dep, :get_tokens)
+  end
+
+  defp get_user_tokens({auth_module, user_id}) do
+    call(auth_module, :get_tokens_for_user, [user_id])
+  end
+
+  defp save_user_tokens(auth_dep, auth) when is_atom(auth_dep) do
+    call(auth_dep, :save, [auth])
+  end
+
+  defp save_user_tokens({auth_module, user_id}, auth) do
+    call(auth_module, :save_for_user, [user_id, auth])
+  end
 
   defp fuse_name(name), do: :"#{name}.unauthorized"
 end
