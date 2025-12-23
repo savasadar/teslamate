@@ -4,6 +4,7 @@ defmodule TeslaMate.Log.Car do
 
   alias TeslaMate.Log.{ChargingProcess, Position, Drive}
   alias TeslaMate.Settings.CarSettings
+  alias TeslaMate.Auth.User
 
   schema "cars" do
     field :name, :string
@@ -19,8 +20,10 @@ defmodule TeslaMate.Log.Car do
     field :vid, :integer
     # TODO: with v2.0 mark as non nullable
     field :vin, :string
+    field :user_id, :integer
 
     belongs_to :settings, CarSettings
+    belongs_to :user, User, references: :id, foreign_key: :user_id, define_field: false
 
     has_many :charging_processes, ChargingProcess
     has_many :positions, Position
@@ -43,12 +46,14 @@ defmodule TeslaMate.Log.Car do
       :marketing_name,
       :exterior_color,
       :wheel_type,
-      :spoiler_type
+      :spoiler_type,
+      :user_id
     ])
-    |> validate_required([:eid, :vid, :vin])
+    |> validate_required([:eid, :vid, :vin, :user_id])
     |> unique_constraint(:settings_id)
     |> unique_constraint(:eid)
     |> unique_constraint(:vin)
     |> unique_constraint(:vid)
+    |> foreign_key_constraint(:user_id)
   end
 end
